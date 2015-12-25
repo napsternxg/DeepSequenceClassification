@@ -22,6 +22,8 @@ import numpy as np
 import glob
 import json
 import time
+import os
+
 
 import preprocess as pp
 
@@ -166,16 +168,26 @@ if __name__ == "__main__":
                     (vocab_size, embedding_size, maxlen, boundary_size, category_size, embedding_size, hidden_layer_size))
 
     # Read the data
-    CV_filenames = [glob.glob("%s/%s/*.xml" % (DATA_DIR, i)) for i in range(1,6)]
+    if sum([os.path.isfile("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"]]) < 4:
+        logger.info("Preprocessed vectors don't exist. Generating again.")
+        CV_filenames = [glob.glob("%s/%s/*.xml" % (DATA_DIR, i)) for i in range(1,6)]
 
-    train_files = reduce(lambda x, y: x + y, CV_filenames[0:1])
-    test_files = reduce(lambda x, y: x + y, CV_filenames[0:1])
+        train_files = reduce(lambda x, y: x + y, CV_filenames[0:4])
+        test_files = reduce(lambda x, y: x + y, CV_filenames[4:])
 
-    X_train, Y_train = vectorize_data(train_files, maxlen=maxlen, output_label_size=boundary_size, output_label_dict=boundary_dict)
-    X_test, Y_test = vectorize_data(test_files, maxlen=maxlen, output_label_size=boundary_size, output_label_dict=boundary_dict)
+        X_train, Y_train = vectorize_data(train_files, maxlen=maxlen, output_label_size=boundary_size, output_label_dict=boundary_dict)
+        X_test, Y_test = vectorize_data(test_files, maxlen=maxlen, output_label_size=boundary_size, output_label_dict=boundary_dict)
+        logger.info("Saving preprocessed vectors for faster computation next time in %s files." % ["%s/%s" % (BASE_DATA_DIR, k) for k in CONFIG["data_vectors"]])
+        np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][0]), X_train)
+        np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][1]), Y_train)
+        np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][2]), X_test)
+        np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][3]), Y_test)
+    else:
+        logger.info("Preprocessed vectors exist. Loading from files %s." % ["%s/%s" % (BASE_DATA_DIR, k) for k in CONFIG["data_vectors"]])
+        X_train, Y_train, X_test, Y_test = [np.load("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"]]
 
     logger.info("Loaded data shapes:\nX_train: %s, Y_train: %s\nX_test: %s, Y_test: %s" % (X_train.shape, Y_train.shape, X_test.shape, Y_test.shape))
-
+    
     if model_type == "brnn":
         model = gen_model_brnn(vocab_size=vocab_size, embedding_size=embedding_size, maxlen=maxlen, output_size=boundary_size, hidden_layer_size=hidden_layer_size, num_hidden_layers = num_hidden_layers, RNN_LAYER_TYPE=RNN_LAYER_TYPE)
     else:
@@ -192,3 +204,4 @@ if __name__ == "__main__":
         total_time = time.time() - start_time
         logger.info("Finished training %.3f epochs in %s seconds with %.5f seconds/epoch" % (save_every, total_time, total_time * 1.0/ save_every))
         model.save_weights("%s/%s_%s.h5" % (SAVE_MODEL_DIR, MODEL_PREFIX, epoch), overwrite=True)
+

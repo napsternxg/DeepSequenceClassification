@@ -20,11 +20,13 @@ Generic library for training models for deep neural networks for text sequence c
 ## Dependencies:
 * Theano
 * Keras
-* BeautifulSoup
+* BeautifulSoup (with lxml)
 * numpy
+* lxml (requires libxml2, libxslt and libxml2-dev)
+
 
 Install theano and keras using the following commands:
 ```
-pip install --upgrade --no-deps git+git://github.com/fchollet/keras.git
-pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
+pip install --user --upgrade --no-deps git+git://github.com/Theano/Theano.git
+pip install --user --upgrade --no-deps git+git://github.com/fchollet/keras.git
 ```

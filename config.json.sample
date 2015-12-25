@@ -15,5 +15,6 @@
   "optimizer": "adam",
   "n_epochs": 1,
   "save_every": 1,
-  "model_type": "brnn"
+  "model_type": "brnn",
+  "data_vectors": ["X_train.npy", "Y_train.npy", "X_test.npy", "Y_test.npy"]
 }
