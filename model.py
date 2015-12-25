@@ -38,9 +38,7 @@ def vectorize_data(filenames, maxlen=100, output_label_size=6, output_label_dict
                 y = []
                 for token in seq:
                     x.append(1 + token.word_index) # Add 1 to include token for padding
-                    #y_vec = np.zeros(boundary_size)
                     y_idx = 1 + output_label_dict.get(token.b_label, -1) # Add 1 to include token for padding
-                    #y_vec[y_idx] = 1
                     y.append(y_idx) # Add 1 to include token for padding
                 X.append(x)
                 Y.append(y)
@@ -51,7 +49,6 @@ def vectorize_data(filenames, maxlen=100, output_label_size=6, output_label_dict
     for i in xrange(len(Y)):
         Y_vec.append([])
         for j in xrange(maxlen):
-            #Y_vec[-1].append([])
             y_vec = np.zeros(output_label_size)
             y_vec[Y[i][j]] = 1
             Y_vec[-1].append(y_vec)
@@ -131,11 +128,20 @@ def gen_model_brnn(vocab_size=100, embedding_size=128, maxlen=100, output_size=6
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", help="Path to config file", default="config.json")
+    args = parser.parse_args()
+    config_file = args.config
+    if args.verbosity:
+            print "verbosity turned on"
+
     CONFIG = json.load(open("config.json"))
 
     BASE_DATA_DIR = CONFIG["BASE_DATA_DIR"]
     DATA_DIR = "%s/%s" % (BASE_DATA_DIR, CONFIG["DATA_DIR"])
     vocab_file = "%s/%s" % (BASE_DATA_DIR, CONFIG["vocab_file"])
+    labels_file = "%s/%s" % (BASE_DATA_DIR, CONFIG["labels_file"])
     boundary_file = "%s/%s" % (BASE_DATA_DIR, CONFIG["boundary_file"])
     category_file = "%s/%s" % (BASE_DATA_DIR, CONFIG["category_file"])
     BASE_OUT_DIR = CONFIG["BASE_OUT_DIR"]
@@ -158,14 +164,16 @@ if __name__ == "__main__":
 
     index_word, word_dict = pp.load_vocab(vocab_file)
     pp.WordToken.set_vocab(word_dict = word_dict)
+    index_labels, labels_dict = pp.load_vocab(labels_file)
     index_boundary, boundary_dict = pp.load_vocab(boundary_file)
     index_category, category_dict = pp.load_vocab(category_file)
     vocab_size = len(index_word) + pp.WordToken.VOCAB + 1 # Add offset of VOCAB and then extra token for padding
+    labels_size = len(index_labels) + 1 # Add extra token for padding
     boundary_size = len(index_boundary) + 1 # Add extra token for padding 
     category_size = len(index_category) + 1 # Add extra token for padding
 
-    logger.info("Parameters: vocab_size = %s, embedding_size = %s, maxlen = %s, boundary_size = %s, category_size = %s, embedding_size = %s, hidden_layer_size = %s" %\
-                    (vocab_size, embedding_size, maxlen, boundary_size, category_size, embedding_size, hidden_layer_size))
+    logger.info("Parameters: vocab_size = %s, labels_size = %s, embedding_size = %s, maxlen = %s, boundary_size = %s, category_size = %s, embedding_size = %s, hidden_layer_size = %s" %\
+                    (vocab_size, labels_size, embedding_size, maxlen, boundary_size, category_size, embedding_size, hidden_layer_size))
 
     # Read the data
     if sum([os.path.isfile("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"]]) < 4:
@@ -175,8 +183,8 @@ if __name__ == "__main__":
         train_files = reduce(lambda x, y: x + y, CV_filenames[0:4])
         test_files = reduce(lambda x, y: x + y, CV_filenames[4:])
 
-        X_train, Y_train = vectorize_data(train_files, maxlen=maxlen, output_label_size=boundary_size, output_label_dict=boundary_dict)
-        X_test, Y_test = vectorize_data(test_files, maxlen=maxlen, output_label_size=boundary_size, output_label_dict=boundary_dict)
+        X_train, Y_train = vectorize_data(train_files, maxlen=maxlen, output_label_size=labels_size, output_label_dict=labels_dict)
+        X_test, Y_test = vectorize_data(test_files, maxlen=maxlen, output_label_size=labels_size, output_label_dict=labels_dict)
         logger.info("Saving preprocessed vectors for faster computation next time in %s files." % ["%s/%s" % (BASE_DATA_DIR, k) for k in CONFIG["data_vectors"]])
         np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][0]), X_train)
         np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][1]), Y_train)
@@ -189,9 +197,9 @@ if __name__ == "__main__":
     logger.info("Loaded data shapes:\nX_train: %s, Y_train: %s\nX_test: %s, Y_test: %s" % (X_train.shape, Y_train.shape, X_test.shape, Y_test.shape))
     
     if model_type == "brnn":
-        model = gen_model_brnn(vocab_size=vocab_size, embedding_size=embedding_size, maxlen=maxlen, output_size=boundary_size, hidden_layer_size=hidden_layer_size, num_hidden_layers = num_hidden_layers, RNN_LAYER_TYPE=RNN_LAYER_TYPE)
+        model = gen_model_brnn(vocab_size=vocab_size, embedding_size=embedding_size, maxlen=maxlen, output_size=labels_size, hidden_layer_size=hidden_layer_size, num_hidden_layers = num_hidden_layers, RNN_LAYER_TYPE=RNN_LAYER_TYPE)
     else:
-        model = gen_model(vocab_size=vocab_size, embedding_size=embedding_size, maxlen=maxlen, output_size=boundary_size, hidden_layer_size=hidden_layer_size, num_hidden_layers = num_hidden_layers, RNN_LAYER_TYPE=RNN_LAYER_TYPE)
+        model = gen_model(vocab_size=vocab_size, embedding_size=embedding_size, maxlen=maxlen, output_size=labels_size, hidden_layer_size=hidden_layer_size, num_hidden_layers = num_hidden_layers, RNN_LAYER_TYPE=RNN_LAYER_TYPE)
 
 
     for epoch in range(0, n_epochs, save_every):
