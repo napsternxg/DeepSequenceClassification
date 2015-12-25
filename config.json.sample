@@ -1,0 +1,19 @@
+{
+  "BASE_DATA_DIR": "../data",
+  "DATA_DIR": "temp/working-set/",
+  "vocab_file": "index_word.txt",
+  "boundary_file": "thesaurus_boundary_test.txt",
+  "category_file": "thesaurus_category_test.txt",
+  "BASE_OUT_DIR": "./output",
+  "SAVE_MODEL_DIR": "models",
+  "MODEL_PREFIX": "model",
+  "RNN_LAYER_TYPE": "LSTM",
+  "maxlen": 100,
+  "num_hidden_layers": 1,
+  "embedding_size": 128,
+  "hidden_layer_size": 100,
+  "optimizer": "adam",
+  "n_epochs": 1,
+  "save_every": 1,
+  "model_type": "brnn"
+}

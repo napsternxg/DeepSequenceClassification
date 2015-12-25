@@ -1,0 +1,11 @@
+.ipynb_checkpoints/*
+*.ipynb
+
+config.json
+*.log
+*.pyc
+*.pyo
+*.err
+*.out
+*.txt
+*.h5
