@@ -11,7 +11,7 @@ import bs4
 #logging.basicConfig(format='%(levelname)s %(asctime)s:%(message)s', level=logging.INFO)
 
 print "Reloaded Ext."
-logger = logging.getLogger("EntityExtractor")
+logger = logging.getLogger("DeepSequenceClassification")
 logger.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
@@ -137,7 +137,9 @@ def load_vocab(save_file):
     return index_word, word_dict
 
 if __name__ == "__main__":
-    DIR_NAME = "../data/ldc/working-set"
+    import json
+    CONFIG = json.load(open("config.json"))
+    DIR_NAME = "%s/%s" % (CONFIG["BASE_DATA_DIR"], CONFIG["DATA_DIR"])
     CV_filenames = [glob.glob("%s/%s/*.xml" % (DIR_NAME, i)) for i in range(1,6)]
     filenames = reduce(lambda x, y: x + y, CV_filenames[0:4])
     index_word, word_dict = gen_vocab(filenames, n_words = 10000, min_freq=1, save_file="index_word.txt")

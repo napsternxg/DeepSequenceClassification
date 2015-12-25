@@ -1,6 +1,6 @@
 # coding: utf-8
 import logging
-logger = logging.getLogger("EntityExtractor_Model")
+logger = logging.getLogger("DeepSequenceClassification_Model")
 logger.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
