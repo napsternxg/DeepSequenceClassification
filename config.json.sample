@@ -1,7 +1,8 @@
 {
   "BASE_DATA_DIR": "../data",
-  "DATA_DIR": "temp/working-set/",
+  "DATA_DIR": "ldc/working-set/",
   "vocab_file": "index_word.txt",
+  "labels_file": "thesaurus_boundary_test.txt",
   "boundary_file": "thesaurus_boundary_test.txt",
   "category_file": "thesaurus_category_test.txt",
   "BASE_OUT_DIR": "./output",
@@ -9,12 +10,12 @@
   "MODEL_PREFIX": "model",
   "RNN_LAYER_TYPE": "LSTM",
   "maxlen": 100,
-  "num_hidden_layers": 1,
+  "num_hidden_layers": 2,
   "embedding_size": 128,
   "hidden_layer_size": 100,
   "optimizer": "adam",
-  "n_epochs": 1,
-  "save_every": 1,
+  "n_epochs": 100,
+  "save_every": 10,
   "model_type": "brnn",
   "data_vectors": ["X_train.npy", "Y_train.npy", "X_test.npy", "Y_test.npy"]
 }

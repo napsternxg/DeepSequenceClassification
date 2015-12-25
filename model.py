@@ -133,10 +133,9 @@ if __name__ == "__main__":
     parser.add_argument("--config", help="Path to config file", default="config.json")
     args = parser.parse_args()
     config_file = args.config
-    if args.verbosity:
-            print "verbosity turned on"
+    logger.info("Using config file: %s" % config_file)
 
-    CONFIG = json.load(open("config.json"))
+    CONFIG = json.load(open(config_file))
 
     BASE_DATA_DIR = CONFIG["BASE_DATA_DIR"]
     DATA_DIR = "%s/%s" % (BASE_DATA_DIR, CONFIG["DATA_DIR"])
