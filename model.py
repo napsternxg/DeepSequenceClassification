@@ -122,6 +122,45 @@ def gen_model_brnn(vocab_size=100, embedding_size=128, maxlen=100, output_size=6
     return model
 
 
+def gen_model_brnn_multitask(vocab_size=100, embedding_size=128, maxlen=100, output_size=[6, 96], hidden_layer_size=100, num_hidden_layers = 1, RNN_LAYER_TYPE="LSTM"):
+    RNN_CLASS = LSTM
+    if RNN_LAYER_TYPE == "GRU":
+        RNN_CLASS = GRU
+    logger.info("Parameters: vocab_size = %s, embedding_size = %s, maxlen = %s, output_size = %s, hidden_layer_size = %s, " %\
+            (vocab_size, embedding_size, maxlen, output_size, hidden_layer_size))
+    logger.info("Building Graph model for Bidirectional RNN")
+    model = Graph()
+    model.add_input(name='input', input_shape=(maxlen,), dtype=int)
+    logger.info("Added Input node")
+    logger.info("Init Model with vocab_size = %s, embedding_size = %s, maxlen = %s" % (vocab_size, embedding_size, maxlen))
+    model.add_node(Embedding(vocab_size, embedding_size, input_length=maxlen), name='embedding', input='input')
+    logger.info("Added Embedding node")
+    model.add_node(Dropout(0.5), name="dropout_0", input="embedding")
+    logger.info("Added Dropout Node")
+    for i in xrange(num_hidden_layers):
+        last_dropout_name = "dropout_%s" % i
+        forward_name, backward_name, dropout_name = ["%s_%s" % (k, i + 1) for k in ["forward", "backward", "dropout"]]
+        model.add_node(RNN_CLASS(output_dim=hidden_layer_size, activation='sigmoid', inner_activation='hard_sigmoid', return_sequences=True), name=forward_name, input=last_dropout_name)
+        logger.info("Added %s forward node[%s]" % (RNN_LAYER_TYPE, i+1))
+        model.add_node(RNN_CLASS(output_dim=hidden_layer_size, activation='sigmoid', inner_activation='hard_sigmoid', return_sequences=True, go_backwards=True), name=backward_name, input=last_dropout_name)
+        logger.info("Added %s backward node[%s]" % (RNN_LAYER_TYPE, i+1))
+        model.add_node(Dropout(0.5), name=dropout_name, inputs=[forward_name, backward_name])
+        logger.info("Added Dropout node[%s]" % (i+1))
+    output_names = []
+    for i, output_task_size in enumerate(output_size):
+        tdd_name, output_name = "tdd_%s" % i, "output_%s" % i
+        model.add_node(TimeDistributedDense(output_task_size, activation="softmax"), name=tdd_name, input=dropout_name)
+        logger.info("Added TimeDistributedDense node %s with output_size")
+        model.add_output(name=output_name, input=tdd_name)
+        output_names.append(output_name)
+    logger.info("Added Output node")
+    logger.info("Created model with following config:\n%s" % model.get_config())
+    logger.info("Compiling model with optimizer %s" % optimizer)
+    start_time = time.time()
+    model.compile(optimizer, {k: 'categorical_crossentropy' for k in output_names})
+    total_time = time.time() - start_time
+    logger.info("Model compiled in %.4f seconds." % total_time)
+    return model, output_names
 
 if __name__ == "__main__":
     import argparse
@@ -180,23 +219,52 @@ if __name__ == "__main__":
 
         train_files = reduce(lambda x, y: x + y, CV_filenames[0:4])
         test_files = reduce(lambda x, y: x + y, CV_filenames[4:])
-
-        X_train, Y_train = vectorize_data(train_files, maxlen=maxlen, output_label_size=labels_size, output_label_dict=labels_dict, output_type=label_type)
-        X_test, Y_test = vectorize_data(test_files, maxlen=maxlen, output_label_size=labels_size, output_label_dict=labels_dict, output_type=label_type)
-        logger.info("Saving preprocessed vectors for faster computation next time in %s files." % ["%s/%s" % (BASE_DATA_DIR, k) for k in CONFIG["data_vectors"]])
-        np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][0]), X_train)
-        np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][1]), vtu.onehot_to_idxarr(Y_train))
-        np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][2]), X_test)
-        np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][3]), vtu.onehot_to_idxarr(Y_test))
+        if model_type == "brnn_multitask":
+            Y_train = []
+            Y_test = []
+            X_train, Y_train_t = vectorize_data(train_files, maxlen=maxlen, output_label_size=boundary_size, output_label_dict=boundary_dict, output_type="boundary")
+            X_test, Y_test_t = vectorize_data(test_files, maxlen=maxlen, output_label_size=boundary_size, output_label_dict=boundary_dict, output_type="boundary")
+            Y_train.append(Y_train_t)
+            Y_test.append(Y_test_t)
+            X_train, Y_train_t = vectorize_data(train_files, maxlen=maxlen, output_label_size=category_size, output_label_dict=category_dict, output_type="category")
+            X_test, Y_test_t = vectorize_data(test_files, maxlen=maxlen, output_label_size=category_size, output_label_dict=category_dict, output_type="category")
+            Y_train.append(Y_train_t)
+            Y_test.append(Y_test_t)
+            Y_train = np.array(Y_train)
+            Y_test = np.array(Y_test)
+            logger.info("Saving preprocessed vectors for faster computation next time in %s files." % ["%s/%s" % (BASE_DATA_DIR, k) for k in CONFIG["data_vectors"]])
+            np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][0]), X_train)
+            np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][1]), vtu.onehot_to_idxarr(Y_train[0]))
+            np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][2]), vtu.onehot_to_idxarr(Y_train[1]))
+            np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][3]), X_test)
+            np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][4]), vtu.onehot_to_idxarr(Y_test[0]))
+            np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][5]), vtu.onehot_to_idxarr(Y_test[1]))
+        else:
+            X_train, Y_train = vectorize_data(train_files, maxlen=maxlen, output_label_size=labels_size, output_label_dict=labels_dict, output_type=label_type)
+            X_test, Y_test = vectorize_data(test_files, maxlen=maxlen, output_label_size=labels_size, output_label_dict=labels_dict, output_type=label_type)
+            logger.info("Saving preprocessed vectors for faster computation next time in %s files." % ["%s/%s" % (BASE_DATA_DIR, k) for k in CONFIG["data_vectors"]])
+            np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][0]), X_train)
+            np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][1]), vtu.onehot_to_idxarr(Y_train))
+            np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][2]), X_test)
+            np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][3]), vtu.onehot_to_idxarr(Y_test))
     else:
         logger.info("Preprocessed vectors exist. Loading from files %s." % ["%s/%s" % (BASE_DATA_DIR, k) for k in CONFIG["data_vectors"]])
-        X_train, X_test = [np.load("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"][::2]]
-        Y_train, Y_test = [vtu.to_onehot(np.load("%s/%s" % (BASE_DATA_DIR, k)), labels_size) for k in CONFIG["data_vectors"][1::2]]
-
-    logger.info("Loaded data shapes:\nX_train: %s, Y_train: %s\nX_test: %s, Y_test: %s" % (X_train.shape, Y_train.shape, X_test.shape, Y_test.shape))
+        if model_type == "brnn_multitask":
+            X_train, X_test = [np.load("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"][::3]]
+            Y_train = [vtu.to_onehot(np.load("%s/%s" % (BASE_DATA_DIR, k[0])), k[1]) for k in zip(CONFIG["data_vectors"][1:3], [boundary_size, category_size])]
+            Y_test = [vtu.to_onehot(np.load("%s/%s" % (BASE_DATA_DIR, k[0])), k[1]) for k in zip(CONFIG["data_vectors"][4:6], [boundary_size, category_size])]
+        else:
+            X_train, X_test = [np.load("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"][::2]]
+            Y_train, Y_test = [vtu.to_onehot(np.load("%s/%s" % (BASE_DATA_DIR, k)), labels_size) for k in CONFIG["data_vectors"][1::2]]
+    if model_type == "brnn_multitask":
+        logger.info("Loaded data shapes:\nX_train: %s, Y_train: %s\nX_test: %s, Y_test: %s" % (X_train.shape, [k.shape for k in Y_train], X_test.shape, [k.shape for k in Y_train]))
+    else:
+        logger.info("Loaded data shapes:\nX_train: %s, Y_train: %s\nX_test: %s, Y_test: %s" % (X_train.shape, Y_train.shape, X_test.shape, Y_test.shape))
     
     if model_type == "brnn":
         model = gen_model_brnn(vocab_size=vocab_size, embedding_size=embedding_size, maxlen=maxlen, output_size=labels_size, hidden_layer_size=hidden_layer_size, num_hidden_layers = num_hidden_layers, RNN_LAYER_TYPE=RNN_LAYER_TYPE)
+    elif model_type == "brnn_multitask":
+        model, output_names = gen_model_brnn_multitask(vocab_size=vocab_size, embedding_size=embedding_size, maxlen=maxlen, output_size=[boundary_size, category_size], hidden_layer_size=hidden_layer_size, num_hidden_layers = num_hidden_layers, RNN_LAYER_TYPE=RNN_LAYER_TYPE)
     else:
         model = gen_model(vocab_size=vocab_size, embedding_size=embedding_size, maxlen=maxlen, output_size=labels_size, hidden_layer_size=hidden_layer_size, num_hidden_layers = num_hidden_layers, RNN_LAYER_TYPE=RNN_LAYER_TYPE)
 
@@ -206,6 +274,9 @@ if __name__ == "__main__":
         start_time = time.time()
         if model_type == "brnn":
             model.fit({"input": X_train,"output": Y_train}, validation_data={"input": X_test, "output": Y_test}, nb_epoch=save_every, verbose=verbosity)
+        elif model_type == "brnn_multitask":
+            model.fit({"input": X_train, output_names[0]: Y_train[0], output_names[1]: Y_train[1]},\
+                    validation_data={"input": X_test, output_names[0]: Y_test[0], output_names[1]: Y_test[1]}, nb_epoch=save_every, verbose=verbosity)
         else:
             model.fit(X_train,Y_train, validation_data=(X_test, Y_test), nb_epoch=save_every, verbose=verbosity, show_accuracy=True)
         total_time = time.time() - start_time
