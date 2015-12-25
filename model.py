@@ -127,9 +127,11 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", help="Path to config file", default="config.json")
+    parser.add_argument("--verbose", help="Verbosity level in training.", default=2, type=int)
     args = parser.parse_args()
     config_file = args.config
-    logger.info("Using config file: %s" % config_file)
+    verbosity = args.verbose
+    logger.info("Using config file: %s and verbosity: %s" % (config_file, verbosity))
 
     CONFIG = json.load(open(config_file))
 
@@ -203,9 +205,9 @@ if __name__ == "__main__":
         logger.info("Starting Epochs %s to %s" % (epoch, epoch + save_every))
         start_time = time.time()
         if model_type == "brnn":
-            model.fit({"input": X_train,"output": Y_train}, validation_data={"input": X_test, "output": Y_test}, nb_epoch=save_every, verbose=2)
+            model.fit({"input": X_train,"output": Y_train}, validation_data={"input": X_test, "output": Y_test}, nb_epoch=save_every, verbose=verbosity)
         else:
-            model.fit(X_train,Y_train, validation_data=(X_test, Y_test), nb_epoch=save_every, verbose=2, show_accuracy=True)
+            model.fit(X_train,Y_train, validation_data=(X_test, Y_test), nb_epoch=save_every, verbose=verbosity, show_accuracy=True)
         total_time = time.time() - start_time
         logger.info("Finished training %.3f epochs in %s seconds with %.5f seconds/epoch" % (save_every, total_time, total_time * 1.0/ save_every))
         model.save_weights("%s/%s_%s_h%s-%s.h5" % (SAVE_MODEL_DIR, MODEL_PREFIX, model_type, num_hidden_layers, epoch), overwrite=True)
