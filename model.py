@@ -26,7 +26,7 @@ import os
 
 
 import preprocess as pp
-
+import vector_utils as vtu
 def vectorize_data(filenames, maxlen=100, output_label_size=6, output_label_dict=None, output_type="boundary"):
     assert output_label_dict is not None
     X = []
@@ -47,16 +47,9 @@ def vectorize_data(filenames, maxlen=100, output_label_size=6, output_label_dict
                 Y.append(y)
     X = pad_sequences(X, maxlen=maxlen)
     Y = pad_sequences(Y, maxlen=maxlen)
-    Y_vec = []
-    # Now y should be converted to one hot vector for each index value
-    for i in xrange(len(Y)):
-        Y_vec.append([])
-        for j in xrange(maxlen):
-            y_vec = np.zeros(output_label_size)
-            y_vec[Y[i][j]] = 1
-            Y_vec[-1].append(y_vec)
+    
     X = np.array(X)
-    Y = np.array(Y_vec)
+    Y = vtu.to_onehot(Y, output_label_size)
     return X, Y
 
 def gen_model(vocab_size=100, embedding_size=128, maxlen=100, output_size=6, hidden_layer_size=100, num_hidden_layers = 1, RNN_LAYER_TYPE="LSTM"):
@@ -190,12 +183,13 @@ if __name__ == "__main__":
         X_test, Y_test = vectorize_data(test_files, maxlen=maxlen, output_label_size=labels_size, output_label_dict=labels_dict, output_type=label_type)
         logger.info("Saving preprocessed vectors for faster computation next time in %s files." % ["%s/%s" % (BASE_DATA_DIR, k) for k in CONFIG["data_vectors"]])
         np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][0]), X_train)
-        np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][1]), Y_train)
+        np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][1]), vtu.onehot_to_idxarr(Y_train))
         np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][2]), X_test)
-        np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][3]), Y_test)
+        np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][3]), vtu.onehot_to_idxarr(Y_test))
     else:
         logger.info("Preprocessed vectors exist. Loading from files %s." % ["%s/%s" % (BASE_DATA_DIR, k) for k in CONFIG["data_vectors"]])
-        X_train, Y_train, X_test, Y_test = [np.load("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"]]
+        X_train, X_test = [np.load("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"][::2]]
+        Y_train, Y_test = [vtu.to_onehot(np.load("%s/%s" % (BASE_DATA_DIR, k)), labels_size) for k in CONFIG["data_vectors"][1::2]]
 
     logger.info("Loaded data shapes:\nX_train: %s, Y_train: %s\nX_test: %s, Y_test: %s" % (X_train.shape, Y_train.shape, X_test.shape, Y_test.shape))
     
