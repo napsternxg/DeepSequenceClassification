@@ -69,3 +69,5 @@ config.json
 *.out
 *.txt
 *.h5
+
+config*.json

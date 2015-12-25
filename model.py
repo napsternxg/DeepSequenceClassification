@@ -27,7 +27,7 @@ import os
 
 import preprocess as pp
 
-def vectorize_data(filenames, maxlen=100, output_label_size=6, output_label_dict=None):
+def vectorize_data(filenames, maxlen=100, output_label_size=6, output_label_dict=None, output_type="boundary"):
     assert output_label_dict is not None
     X = []
     Y = []
@@ -38,7 +38,10 @@ def vectorize_data(filenames, maxlen=100, output_label_size=6, output_label_dict
                 y = []
                 for token in seq:
                     x.append(1 + token.word_index) # Add 1 to include token for padding
-                    y_idx = 1 + output_label_dict.get(token.b_label, -1) # Add 1 to include token for padding
+                    if output_type == "category":
+                        y_idx = 1 + output_label_dict.get(token.c_label, -1) # Add 1 to include token for padding
+                    else:
+                        y_idx = 1 + output_label_dict.get(token.b_label, -1) # Add 1 to include token for padding
                     y.append(y_idx) # Add 1 to include token for padding
                 X.append(x)
                 Y.append(y)
@@ -145,6 +148,7 @@ if __name__ == "__main__":
     category_file = "%s/%s" % (BASE_DATA_DIR, CONFIG["category_file"])
     BASE_OUT_DIR = CONFIG["BASE_OUT_DIR"]
     SAVE_MODEL_DIR = "%s/%s" % (BASE_OUT_DIR, CONFIG["SAVE_MODEL_DIR"])
+    label_type = CONFIG.get("label_type", "boundary")
     MODEL_PREFIX = CONFIG.get("MODEL_PREFIX", "model")
     maxlen = CONFIG["maxlen"]
     num_hidden_layers = CONFIG["num_hidden_layers"]
@@ -171,8 +175,8 @@ if __name__ == "__main__":
     boundary_size = len(index_boundary) + 1 # Add extra token for padding 
     category_size = len(index_category) + 1 # Add extra token for padding
 
-    logger.info("Parameters: vocab_size = %s, labels_size = %s, embedding_size = %s, maxlen = %s, boundary_size = %s, category_size = %s, embedding_size = %s, hidden_layer_size = %s" %\
-                    (vocab_size, labels_size, embedding_size, maxlen, boundary_size, category_size, embedding_size, hidden_layer_size))
+    logger.info("Parameters: vocab_size = %s, label_type = %s, labels_size = %s, embedding_size = %s, maxlen = %s, boundary_size = %s, category_size = %s, embedding_size = %s, hidden_layer_size = %s" %\
+                    (vocab_size, label_type, labels_size, embedding_size, maxlen, boundary_size, category_size, embedding_size, hidden_layer_size))
 
     # Read the data
     if sum([os.path.isfile("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"]]) < 4:
@@ -182,8 +186,8 @@ if __name__ == "__main__":
         train_files = reduce(lambda x, y: x + y, CV_filenames[0:4])
         test_files = reduce(lambda x, y: x + y, CV_filenames[4:])
 
-        X_train, Y_train = vectorize_data(train_files, maxlen=maxlen, output_label_size=labels_size, output_label_dict=labels_dict)
-        X_test, Y_test = vectorize_data(test_files, maxlen=maxlen, output_label_size=labels_size, output_label_dict=labels_dict)
+        X_train, Y_train = vectorize_data(train_files, maxlen=maxlen, output_label_size=labels_size, output_label_dict=labels_dict, output_type=label_type)
+        X_test, Y_test = vectorize_data(test_files, maxlen=maxlen, output_label_size=labels_size, output_label_dict=labels_dict, output_type=label_type)
         logger.info("Saving preprocessed vectors for faster computation next time in %s files." % ["%s/%s" % (BASE_DATA_DIR, k) for k in CONFIG["data_vectors"]])
         np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][0]), X_train)
         np.save("%s/%s" % (BASE_DATA_DIR, CONFIG["data_vectors"][1]), Y_train)

@@ -1,6 +1,7 @@
 {
   "BASE_DATA_DIR": "../data",
   "DATA_DIR": "test/working-set/",
+  "label_type": "boundary",
   "vocab_file": "index_word.txt",
   "labels_file": "thesaurus_boundary_test.txt",
   "boundary_file": "thesaurus_boundary_test.txt",
@@ -17,5 +18,5 @@
   "n_epochs": 100,
   "save_every": 10,
   "model_type": "brnn",
-  "data_vectors": ["X_train.npy", "Y_train.npy", "X_test.npy", "Y_test.npy"]
+  "data_vectors": ["X_train.npy", "Y_boundary_train.npy", "X_test.npy", "Y_boundary_test.npy"]
 }
