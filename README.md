@@ -17,6 +17,29 @@ python model.py --config config_multitask.json --verbose 1
 python model.py --config config_multitask.json --verbose 1 --weights output/models/model_multi_brnn_multitask_h2-45.h5 --base_epochs 45
 ```
 
+## Preprocessing:
+
+* Currently, we support the preprocessing for the following file formats:
+```
+<ROOT><DOC>
+<DOCNO> DOCUMENT 1 </DOCNO>
+     For <TIME TYPE="DATE:DATE">six years</TIME> , <ENTITY TYPE="PERSON">Shubhanshu A. B. Mishra</ENTITY> has made several programming projects after being inspired by <ENTITY TYPE="PERSON">Linus Torvalds</ENTITY>, a very renowned programmer.
+</DOC></ROOT>
+```
+* Each file can contain multiple `DOCNO`. 
+* The dir structure consists of many folders of data split for cross validation. It is as follows:
+```
+data/
+data/CV_files
+data/CV_files/1/file1.xml
+data/CV_files/1/file2.xml
+data/CV_files/1/file3.xml
+...
+
+data/CV_files/5/file1.xml
+data/CV_files/5/file2.xml
+```
+
 ## Supports:
 * Boundary and Category Detection
 * Simple RNN and Bidirectional RNN
