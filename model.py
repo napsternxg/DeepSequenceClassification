@@ -167,9 +167,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", help="Path to config file", default="config.json")
     parser.add_argument("--verbose", help="Verbosity level in training.", default=2, type=int)
+    parser.add_argument("-w", "--weights", help="Path to weights file", default=None)
+    parser.add_argument("-e", "--base_epochs", help="Resume training from number of epochs", default=0, type=int)
     args = parser.parse_args()
     config_file = args.config
     verbosity = args.verbose
+    weights_file = args.weights
+    base_epochs = args.base_epochs
+    if weights_file is None and base_epochs != 0:
+        logger.warn("base_epochs should only be set when loading weights. Continuing with base_epochs = 0")
+    else:
+        logger.info("Will load model weights from %s and train using base_epochs = %s" % (weights_file, base_epochs))
     logger.info("Using config file: %s and verbosity: %s" % (config_file, verbosity))
 
     CONFIG = json.load(open(config_file))
@@ -190,14 +198,13 @@ if __name__ == "__main__":
     hidden_layer_size = CONFIG["hidden_layer_size"]
     RNN_LAYER_TYPE = CONFIG.get("RNN_LAYER_TYPE", "LSTM")
     optimizer = CONFIG["optimizer"]
-    n_epochs = CONFIG["n_epochs"]
+    n_epochs = CONFIG["n_epochs"] + base_epochs
     save_every = CONFIG["save_every"]
     model_type = CONFIG.get("model_type", "rnn") # rnn, brnn
 
     RNN_CLASS = LSTM
     if RNN_LAYER_TYPE == "GRU":
         RNN_CLASS = GRU
-
 
     index_word, word_dict = pp.load_vocab(vocab_file)
     pp.WordToken.set_vocab(word_dict = word_dict)
@@ -268,8 +275,10 @@ if __name__ == "__main__":
     else:
         model = gen_model(vocab_size=vocab_size, embedding_size=embedding_size, maxlen=maxlen, output_size=labels_size, hidden_layer_size=hidden_layer_size, num_hidden_layers = num_hidden_layers, RNN_LAYER_TYPE=RNN_LAYER_TYPE)
 
-
-    for epoch in range(0, n_epochs, save_every):
+    if weights_file is not None:
+        logger.info("Loading model weights from %s. Will continue training model from %s epochs." % (weights_file, base_epochs))
+        model.load_weights(weights_file)
+    for epoch in xrange(base_epochs, n_epochs, save_every):
         logger.info("Starting Epochs %s to %s" % (epoch, epoch + save_every))
         start_time = time.time()
         if model_type == "brnn":
