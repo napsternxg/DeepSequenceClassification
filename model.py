@@ -17,6 +17,7 @@ from keras.layers.core import Dense, Dropout, Activation, TimeDistributedDense, 
 from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM, GRU
 from keras.preprocessing.sequence import pad_sequences
+from keras.utils.np_utils import accuracy
 
 import numpy as np
 import glob
@@ -283,9 +284,20 @@ if __name__ == "__main__":
         start_time = time.time()
         if model_type == "brnn":
             model.fit({"input": X_train,"output": Y_train}, validation_data={"input": X_test, "output": Y_test}, nb_epoch=save_every, verbose=verbosity)
+            Y_out = model.predict({'input': X_test})['output']
+            Y_idx = (Y_test[:,:,0] == 0) & (Y_test[:,:,5] == 0) # Get indexes of only those tokens which correspond to entitites
+            # Calculate accuracy only based on correct entity identity
+            acc = accuracy(np.argmax(np.array(Y_out), axis=-1)[Y_idx], np.argmax(Y_test, axis=-1)[Y_idx])
+            logger.info("Output test accuracy: %.3f" % acc*100)
         elif model_type == "brnn_multitask":
             model.fit({"input": X_train, output_names[0]: Y_train[0], output_names[1]: Y_train[1]},\
                     validation_data={"input": X_test, output_names[0]: Y_test[0], output_names[1]: Y_test[1]}, nb_epoch=save_every, verbose=verbosity)
+            Y_out = model.predict({'input': X_test})
+            Y_idx = (Y_test[0][:,:,0] == 0) & (Y_test[0][:,:,5] == 0) # Get indexes of only those tokens which correspond to entitites
+            # Calculate accuracy only based on correct entity identity
+            acc1 = accuracy(np.argmax(np.array(Y_out[output_names[0]]), axis=-1)[Y_idx], np.argmax(Y_test[0], axis=-1)[Y_idx])
+            acc2 = accuracy(np.argmax(np.array(Y_out[output_names[1]]), axis=-1)[Y_idx], np.argmax(Y_test[1], axis=-1)[Y_idx])
+            logger.info("Test accuracy: %.3f[%s], %.3f[%s]" % (acc1* 100, output_names[0], acc2 * 100, output_names[1]))
         else:
             model.fit(X_train,Y_train, validation_data=(X_test, Y_test), nb_epoch=save_every, verbose=verbosity, show_accuracy=True)
         total_time = time.time() - start_time
