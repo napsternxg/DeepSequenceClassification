@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, coo_matrix
 
 def save_sparse_csr(filename,array):
     np.savez(filename,data = array.data ,indices=array.indices,
@@ -30,3 +30,8 @@ def to_onehot(Y, vector_size):
 
 def onehot_to_idxarr(Y):
     return Y.argmax(axis=len(Y.shape) - 1)
+
+def confusion_matrix(y_pred, y_true):
+    n_labels = len(set(y_pred.tolist()).union(set(y_true.tolist())))
+    CM = coo_matrix((np.ones(y_true.shape[0], dtype=np.int),(y_true, y_pred)), shape=(n_labels, n_labels)).toarray()
+    return CM
