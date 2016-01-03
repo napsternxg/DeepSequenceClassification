@@ -141,5 +141,7 @@ if __name__ == "__main__":
     CONFIG = json.load(open("config.json"))
     DIR_NAME = "%s/%s" % (CONFIG["BASE_DATA_DIR"], CONFIG["DATA_DIR"])
     CV_filenames = [glob.glob("%s/%s/*.xml" % (DIR_NAME, i)) for i in range(1,6)]
-    filenames = reduce(lambda x, y: x + y, CV_filenames[0:4])
-    index_word, word_dict = gen_vocab(filenames, n_words = 10000, min_freq=1, save_file="index_word.txt")
+    filenames = reduce(lambda x, y: x + y, CV_filenames[0:])
+    WordToken.set_vocab() # Initialize an empty vocab
+    index_word, word_dict = gen_vocab(filenames, n_words = 50000, min_freq=3, save_file="index_word.txt")
+    logger.info("Saved %s index for vocab words in file %s." % (len(index_word), "index_word.txt"))
