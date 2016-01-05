@@ -30,11 +30,11 @@ class WordToken:
         if self.token_type == WordToken.START:
             self.word_value = ""
             self.word_index = WordToken.START
-            self.char_value = "^"
+            self.char_value = "<^>"
         elif self.token_type == WordToken.END:
             self.word_value = ""
             self.word_index = WordToken.END
-            self.char_value = "$"
+            self.char_value = "<$>"
         else:
             self.word_value = value.lower()
             self.char_value = value
@@ -43,13 +43,15 @@ class WordToken:
                 self.word_index = WordToken.OOV
             else:
                 self.word_index = WordToken.word_dict[self.word_value] + WordToken.VOCAB
+        self.char_seq = [1 + WordToken.char_dict.get(k, -1) for k in self.char_value] # 0 for OOV char
         self.b_label = b_label
         self.c_label = c_label
     
     @staticmethod
-    def set_vocab(word_dict = {}):
-        logger.info("Initializing WordToken word_dict with %s items" % len(word_dict))
+    def set_vocab(word_dict = {}, char_dict={}):
+        logger.info("Initializing WordToken word_dict with %s items and char_dict with %s items" % (len(word_dict), len(char_dict)))
         WordToken.word_dict = word_dict
+        WordToken.char_dict = char_dict
     
     def get_type(self):
         if self.token_type == WordToken.START:
@@ -105,7 +107,7 @@ def get_documents(filename):
     for k in xml_data.find_all("DOC"):
         yield (k.DOCNO.string.strip(), k)
 
-def gen_vocab(filenames, n_words = 10000, min_freq=1, save_file=None):
+def gen_vocab(filenames, n_words = 10000, min_freq=1):
     vocab_words = Counter()
     for i, filename in enumerate(filenames):
         #xml_data = BeautifulSoup(open(filename), "xml")
@@ -118,12 +120,18 @@ def gen_vocab(filenames, n_words = 10000, min_freq=1, save_file=None):
             logger.info("Finished reading %s files with %s tokens" % (i + 1, len(vocab_words)))
     index_word = map(lambda x: x[0], filter(lambda x: x[1] > min_freq, vocab_words.most_common(n_words)))
     word_dict = dict(zip(index_word, xrange(len(index_word))))
+    
+    index_char= [chr(k) for k in xrange(32, 127)]
+    char_dict = dict((k, v) for v,k in enumerate(index_char))
+    return index_word, word_dict, index_char, char_dict
+
+
+def save_vocab(vocab_dict, save_file=None):
     if save_file is not None:
-        # SAVE WORDS TO FILE
+        # SAVE VOCB TO FILE
         with open(save_file, "wb+") as fp:
-            for i, word in enumerate(index_word):
-                print >> fp, "%s\t%s" % (word, i)
-    return index_word, word_dict
+            for k,v in vocab_dict.iteritems():
+                print >> fp, "%s\t%s" % (k, v)
 
 #WordToken.set_vocab(word_dict=word_dict)
 def load_vocab(save_file):
@@ -143,5 +151,8 @@ if __name__ == "__main__":
     CV_filenames = [glob.glob("%s/%s/*.xml" % (DIR_NAME, i)) for i in range(1,6)]
     filenames = reduce(lambda x, y: x + y, CV_filenames[0:])
     WordToken.set_vocab() # Initialize an empty vocab
-    index_word, word_dict = gen_vocab(filenames, n_words = 50000, min_freq=3, save_file="index_word.txt")
+    index_word, word_dict, index_char, char_dict = gen_vocab(filenames, n_words = 50000, min_freq=3)
+    save_vocab(word_dict, save_file="index_word.txt")
     logger.info("Saved %s index for vocab words in file %s." % (len(index_word), "index_word.txt"))
+    save_vocab(char_dict, save_file="index_char.txt")
+    logger.info("Saved %s index for vocab chars in file %s." % (len(index_char), "index_char.txt"))
