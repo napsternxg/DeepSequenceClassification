@@ -28,6 +28,18 @@ def to_onehot(Y, vector_size):
             Y_vec[-1].append(y_vec)
     return np.array(Y_vec, dtype='int32')
 
+def to_onehot_char(X, vector_size):
+    X_vec = np.zeros(X.shape + (vector_size,))
+    for i in xrange(X_vec.shape[0]):
+      for j in xrange(X_vec.shape[1]):
+        for k in xrange(X_vec.shape[2]):
+            try:
+                X_vec[i,j,k,X[i,j,k]] = 1
+            except:
+                print X_vec.shape, X.shape, (i, j, k), X[i,j,k]
+                raise Exception
+    return X_vec
+
 def onehot_to_idxarr(Y):
     return Y.argmax(axis=len(Y.shape) - 1)
 
