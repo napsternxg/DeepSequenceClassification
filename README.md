@@ -44,9 +44,9 @@ data/CV_files/5/file2.xml
 * Boundary and Category Detection
 * Simple RNN and Bidirectional RNN
 * Multi task sequence learning (Boundary + Category trained using same model)
+* CNN + BRNN
 
 ## Coming Up:
-* CNN + BRNN
 
 ## Use Cases:
 * Named Entity Recognition
