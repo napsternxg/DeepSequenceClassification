@@ -226,7 +226,7 @@ def gen_model_brnn_cnn_multitask(vocab_size=100, char_vocab_size = 100, embeddin
     for i, output_task_size in enumerate(output_size):
         tdd_name, output_name = "tdd_%s" % i, "output_%s" % i
         model.add_node(TimeDistributedDense(output_task_size, activation="softmax"), name=tdd_name, input=dropout_name)
-        logger.info("Added TimeDistributedDense node %s with output_size" % (i, output_task_size))
+        logger.info("Added TimeDistributedDense node %s with output_size %s" % (i, output_task_size))
         model.add_output(name=output_name, input=tdd_name)
         output_names.append(output_name)
     logger.info("Added Output node")
