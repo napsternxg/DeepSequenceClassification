@@ -398,6 +398,46 @@ if __name__ == "__main__":
     if weights_file is not None:
         logger.info("Loading model weights from %s. Will continue training model from %s epochs." % (weights_file, base_epochs))
         model.load_weights(weights_file)
+    if base_epochs > 0:
+        if model_type == "brnn_cnn_multitask":
+            Y_out = model.predict({'input1': X_test, "input2": X_char_test})
+            #Y_idx = (Y_test[0][:,:,0] == 0) & (Y_test[0][:,:,5] == 0) # Get indexes of only those tokens which correspond to entitites
+            Y_idx = Y_test[0][:,:,0] >= 0 # Get all indexes
+            # Calculate accuracy only based on correct entity identity
+            logger.info("Evaluation scores on test data:")
+            scores = {}
+            Y_pred = []
+            Y_true = []
+            score_keys = ["accuracy", "micro_precision", "micro_recall", "micro_f1", "macro_f1", "c_mf1", "c_mp", "c_mr"]
+            for i, k in enumerate(output_names):
+                labels = range(Y_out[k].shape[-1])
+                Y_pred.append(np.argmax(np.array(Y_out[k]), axis=-1)[Y_idx])
+                Y_true.append(np.argmax(Y_test[i], axis=-1)[Y_idx])
+                scores[k] = vtu.get_eval_scores(Y_pred[-1], Y_true[-1], labels = labels)
+                scores[k]["accuracy"] = accuracy(Y_pred[-1], Y_true[-1])
+                TP, FP, FN = (scores[k][_k][1:-1] for _k in ["TP", "FP", "FN"])
+                micro_precision = np.sum(TP) * 1. / np.sum(TP + FP)
+                micro_recall = np.sum(TP) * 1. / np.sum(TP + FN)
+                micro_f1 = 2*micro_precision*micro_recall / (micro_precision+micro_recall)
+                scores[k]["c_mf1"] = micro_f1
+                scores[k]["c_mp"] = micro_precision
+                scores[k]["c_mr"] = micro_recall
+                logger.info("%s: %s" % (k, dict((_k, scores[k][_k]) for _k in score_keys)))
+            all_labels = dict((k, i) for i, k in enumerate((b_i, c_i) for b_i in range(Y_test[0].shape[-1]) for c_i in range(Y_test[1].shape[-1])))
+            all_true = [all_labels.get(k) for k in zip(Y_true[0], Y_true[1])]
+            all_pred = [all_labels.get(k) for k in zip(Y_pred[0], Y_pred[1])]
+            scores_all = vtu.get_eval_scores(all_pred, all_true, labels=range(len(all_labels)))
+            scores_all["accuracy"] = accuracy(all_pred, all_true)
+            valid_idx = map(lambda x: x[1], filter(lambda k: (k[0][0] > 0 and k[0][0] < 5 and k[0][1] > 0 and k[0][1] < 95), all_labels.iteritems()))
+            TP, FP, FN = (scores_all[_k][valid_idx] for _k in ["TP", "FP", "FN"])
+            micro_precision = np.sum(TP) * 1. / np.sum(TP + FP)
+            micro_recall = np.sum(TP) * 1. / np.sum(TP + FN)
+            micro_f1 = 2*micro_precision*micro_recall / (micro_precision+micro_recall)
+            scores_all["c_mf1"] = micro_f1
+            scores_all["c_mp"] = micro_precision
+            scores_all["c_mr"] = micro_recall
+            logger.info("%s: %s" % (k, dict((_k, scores_all[_k]) for _k in score_keys)))
+
     for epoch in xrange(base_epochs, n_epochs, save_every):
         logger.info("Starting Epochs %s to %s" % (epoch, epoch + save_every))
         start_time = time.time()
@@ -421,11 +461,44 @@ if __name__ == "__main__":
             model.fit({"input1": X_train, "input2": X_char_train, output_names[0]: Y_train[0], output_names[1]: Y_train[1]},\
                     validation_data={"input1": X_test, "input2": X_char_test, output_names[0]: Y_test[0], output_names[1]: Y_test[1]}, nb_epoch=save_every, verbose=verbosity)
             Y_out = model.predict({'input1': X_test, "input2": X_char_test})
-            Y_idx = (Y_test[0][:,:,0] == 0) & (Y_test[0][:,:,5] == 0) # Get indexes of only those tokens which correspond to entitites
+            #Y_idx = (Y_test[0][:,:,0] == 0) & (Y_test[0][:,:,5] == 0) # Get indexes of only those tokens which correspond to entitites
+            Y_idx = Y_test[0][:,:,0] >= 0 # Get all indexes
             # Calculate accuracy only based on correct entity identity
-            acc1 = accuracy(np.argmax(np.array(Y_out[output_names[0]]), axis=-1)[Y_idx], np.argmax(Y_test[0], axis=-1)[Y_idx])
-            acc2 = accuracy(np.argmax(np.array(Y_out[output_names[1]]), axis=-1)[Y_idx], np.argmax(Y_test[1], axis=-1)[Y_idx])
-            logger.info("Test accuracy: %.3f[%s], %.3f[%s]" % (acc1* 100, output_names[0], acc2 * 100, output_names[1]))
+            logger.info("Evaluation scores on test data:")
+            scores = {}
+            Y_pred = []
+            Y_true = []
+            score_keys = ["accuracy", "micro_precision", "micro_recall", "micro_f1", "macro_f1", "c_mf1", "c_mp", "c_mr"]
+            for i, k in enumerate(output_names):
+                labels = range(Y_out[k].shape[-1])
+                Y_pred.append(np.argmax(np.array(Y_out[k]), axis=-1)[Y_idx])
+                Y_true.append(np.argmax(Y_test[i], axis=-1)[Y_idx])
+                scores[k] = vtu.get_eval_scores(Y_pred[-1], Y_true[-1], labels = labels)
+                scores[k]["accuracy"] = accuracy(Y_pred[-1], Y_true[-1])
+                TP, FP, FN = (scores[k][_k][1:-1] for _k in ["TP", "FP", "FN"])
+                micro_precision = np.sum(TP) * 1. / np.sum(TP + FP)
+                micro_recall = np.sum(TP) * 1. / np.sum(TP + FN)
+                micro_f1 = 2*micro_precision*micro_recall / (micro_precision+micro_recall)
+                scores[k]["c_mf1"] = micro_f1
+                scores[k]["c_mp"] = micro_precision
+                scores[k]["c_mr"] = micro_recall
+                logger.info("%s: %s" % (k, dict((_k, scores[k][_k]) for _k in score_keys)))
+            all_labels = dict((k, i) for i, k in enumerate((b_i, c_i) for b_i in range(Y_test[0].shape[-1]) for c_i in range(Y_test[1].shape[-1])))
+            all_true = [all_labels.get(k) for k in zip(Y_true[0], Y_true[1])]
+            all_pred = [all_labels.get(k) for k in zip(Y_pred[0], Y_pred[1])]
+            scores_all = vtu.get_eval_scores(all_pred, all_true, labels=range(len(all_labels)))
+            scores_all["accuracy"] = accuracy(all_pred, all_true)
+            valid_idx = map(lambda x: x[1], filter(lambda k: (k[0][0] > 0 and k[0][0] < 5 and k[0][1] > 0 and k[0][1] < 95), all_labels.iteritems()))
+            TP, FP, FN = (scores_all[_k][valid_idx] for _k in ["TP", "FP", "FN"])
+            micro_precision = np.sum(TP) * 1. / np.sum(TP + FP)
+            micro_recall = np.sum(TP) * 1. / np.sum(TP + FN)
+            micro_f1 = 2*micro_precision*micro_recall / (micro_precision+micro_recall)
+            scores_all["c_mf1"] = micro_f1
+            scores_all["c_mp"] = micro_precision
+            scores_all["c_mr"] = micro_recall
+            logger.info("%s: %s" % (k, dict((_k, scores_all[_k]) for _k in score_keys)))
+
+            #logger.info("Test accuracy: %.3f[%s], %.3f[%s]" % (acc1* 100, output_names[0], acc2 * 100, output_names[1]))
             logger.error("Feature under development.")
             #sys.exit(1)
         else:
