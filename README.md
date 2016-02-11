@@ -1,3 +1,6 @@
+[![Twitter Follow](https://img.shields.io/twitter/follow/TheShubhanshu.svg?style=social)](https://twitter.com/TheShubhanshu)
+[![GitHub license](https://img.shields.io/github/license/napsternxg/DeepSequenceClassification.svg)](https://github.com/napsternxg/DeepSequenceClassification/edit/master/LICENSE)
+
 # Deep Sequence Classification
 
 Generic library for training models for deep neural networks for text sequence classification tasks. 
