@@ -27,16 +27,56 @@ import time
 import os, sys
 
 
-import preprocess as pp
+import preprocess_csv as pp
+import preprocess as pp_old
 import vector_utils as vtu
-def vectorize_data(filenames, maxlen=100, max_charlen=20, output_label_size=6, output_label_dict=None, output_type="boundary", return_chars=False):
+
+def vectorize_data(filenames, maxlen=2000, max_charlen=20, output_label_size=6, output_label_dict=None, output_type="boundary", return_chars=False):
+    """
+    Using histogram of document lengths 2000 is a reasonable number train on.
+    """
     assert output_label_dict is not None, "The output label dictionary should be specified before vectorizing data"
     X = []
     X_char = []
     Y = []
     for i, filename in enumerate(filenames):
         for docid, doc in pp.get_documents(filename):
-            for seq in pp.get_sequences(doc):
+            seq =  pp.get_sequences(doc)
+            x = []
+            x_char = []
+            y = []
+            for token in seq:
+                x.append(1 + token.word_index) # Add 1 to include token for padding
+                if return_chars:
+                    x_char.append((1 + np.array(token.char_seq)).tolist()) # Add 1 to include token for padding
+                if output_type == "category":
+                    y_idx = 1 + output_label_dict.get(token.c_label, -1) # Add 1 to include token for padding
+                else:
+                    y_idx = 1 + output_label_dict.get(token.b_label, -1) # Add 1 to include token for padding
+                y.append(y_idx) # Add 1 to include token for padding
+            X.append(x)
+            if return_chars:
+                padded_sequence = pad_sequences([[] for k in xrange(maxlen - len(x_char))], maxlen=max_charlen).tolist() +\
+                        pad_sequences(x_char[:maxlen], maxlen=max_charlen).tolist()
+                X_char.append(padded_sequence)
+            Y.append(y)
+    X = pad_sequences(X, maxlen=maxlen)
+    Y = pad_sequences(Y, maxlen=maxlen)
+    
+    X = np.array(X)
+    Y = vtu.to_onehot(Y, output_label_size)
+    if return_chars:
+        return X, Y, np.array(X_char)
+    return X, Y
+
+def vectorize_data_old(filenames, maxlen=100, max_charlen=20, output_label_size=6, output_label_dict=None, output_type="boundary", return_chars=False):
+    assert output_label_dict is not None, "The output label dictionary should be specified before vectorizing data"
+    X = []
+    X_char = []
+    Y = []
+    for i, filename in enumerate(filenames):
+        for docid, doc in pp_old.get_documents(filename):
+            for seq in pp_old.get_sequences(doc):
                 x = []
                 x_char = []
                 y = []
@@ -307,7 +347,6 @@ if __name__ == "__main__":
     if sum([os.path.isfile("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"]]) < len(CONFIG["data_vectors"]):
         logger.info("Preprocessed vectors don't exist. Generating again.")
         CV_filenames = [glob.glob("%s/%s/*.xml" % (DATA_DIR, i)) for i in range(1,6)]
-
         train_files = reduce(lambda x, y: x + y, CV_filenames[0:4])
         test_files = reduce(lambda x, y: x + y, CV_filenames[4:])
         if model_type == "brnn_cnn_multitask":
