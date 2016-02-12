@@ -231,8 +231,8 @@ if __name__ == "__main__":
     else:
         logger.info("Preprocessed vectors exist. Loading from files %s." % ["%s/%s" % (BASE_DATA_DIR, k) for k in CONFIG["data_vectors"]])
         if model_type == "brnn_cnn_multitask":
-            X_train, X_test = [np.load("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"][::4]]
-            X_char_train, X_char_test = [np.load("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"][1::4]]
+            X_train, X_test = [np.load("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"][::3]]
+            X_char_train, X_char_test = [np.load("%s/%s" % (BASE_DATA_DIR, k)) for k in CONFIG["data_vectors"][1::3]]
             logger.info("Loaded X_char_train: %s, X_char_test: %s" % (X_char_train.shape, X_char_test.shape))
             X_char_train = X_char_train.reshape((X_char_train.shape[0], X_char_train.shape[1]*X_char_train.shape[2]))
             X_char_test = X_char_test.reshape((X_char_test.shape[0], X_char_test.shape[1]*X_char_test.shape[2]))
